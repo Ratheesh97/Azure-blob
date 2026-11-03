@@ -8,7 +8,7 @@ variables:
   # Azure Portal-ல் நீங்கள் உருவாக்கப் போகும் Web App-ன் பெயர்
   webAppName: 'ratheesh-staging-app' 
   # Azure DevOps-ல் நீங்கள் உருவாக்கும் Subscription Service Connection பெயர்
-  azureServiceConnection: 'azure-free-trial-sc' 
+  azureServiceConnection: 'azure-new-app-sc' 
 
 stages:
 - stage: Build
