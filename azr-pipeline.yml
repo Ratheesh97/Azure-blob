@@ -1,0 +1,61 @@
+trigger:
+- main  # உங்க GitHub-ன் பிரதான பிராஞ்ச் பெயர் (main)
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Azure Portal-ல் நீங்கள் உருவாக்கப் போகும் Web App-ன் பெயர்
+  webAppName: 'my-staging-blob-app' 
+  # Azure DevOps-ல் நீங்கள் உருவாக்கும் Subscription Service Connection பெயர்
+  azureServiceConnection: 'my-azure-subscription-service-connection' 
+
+stages:
+- stage: Build
+  displayName: 'Build Stage'
+  jobs:
+  - job: BuildJob
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.10'
+      displayName: 'Use Python 3.10'
+
+    # தேவையான லைப்ரரிகளை இன்ஸ்டால் செய்யும் ஸ்டெப்
+    - script: |
+        python -m venv antenv
+        source antenv/bin/activate
+        python -m pip install --upgrade pip
+        pip install azure-storage-blob
+      displayName: 'Install Dependencies'
+
+    # கோடை ஜிப் (Zip) பைலாக மாற்றுதல்
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+        replaceExistingArchive: true
+
+    # ஜிப் பைலை பைப்லைன் ஆர்டிஃபேக்ட்டாக பப்ளிஷ் செய்தல்
+    - publish: '$(Build.ArtifactStagingDirectory)/app.zip'
+      artifact: drop
+
+- stage: Deploy
+  displayName: 'Deploy to Staging'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: DeployJob
+    steps:
+    - download: current
+      artifact: drop
+
+    # Azure Web App-க்கு கோடை டெலிவரி செய்யும் ஸ்டெப்
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        appType: 'webAppLinux'
+        appName: '$(webAppName)'
+        package: '$(Pipeline.Workspace)/drop/app.zip'
